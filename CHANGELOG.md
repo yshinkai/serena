@@ -113,6 +113,7 @@ Status of the `main` branch. Changes prior to the next official version change w
   - Rename configuration option `additional_workspace_folders` to `ls_additional_workspace_folders`
     and support the option across all language servers (previously limited to TypeScript).
   - `Pyright`: bump timeout for waiting for initial analysis from 5s to 60s.
+  - Add **GraphQL** (experimental) using [graphql-language-service-cli](https://github.com/graphql/graphql-language-service) (`graphql-lsp`), installed with npm together with its `graphql` peer dependency into Serena-managed language-server resources. Handles `.graphql`/`.gql` files. With a [graphql-config](https://the-guild.dev/graphql/config) file (`.graphqlrc.yml` / `graphql.config.{yml,yaml,json}`) at the repository root, cross-file go-to-definition resolves operation fields into their schema type definitions; document symbols and typed hover work per file. Must be explicitly specified in `project.yml`. Note: the upstream server does not implement `textDocument/references`, so find-references is unsupported.
 
 * JetBrains:
   - Add configuration option `jetbrains_launch_command`, allowing Serena to spawn IDE instances automatically

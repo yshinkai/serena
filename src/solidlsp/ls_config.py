@@ -277,6 +277,14 @@ class Language(str, Enum):
     project.yml — Angular LS supersedes both for Angular projects.
     Must be explicitly specified in project.yml.
     """
+    GRAPHQL = "graphql"
+    """GraphQL language server (experimental) using graphql-language-service-cli
+    (https://github.com/graphql/graphql-language-service). Supports *.graphql and *.gql files.
+    Must be explicitly specified in project.yml. Requires Node.js and npm.
+    Cross-file navigation (operation field -> schema definition, find-references of a type)
+    requires a graphql-config file (.graphqlrc.yml / graphql.config.{yml,yaml,json}) at the
+    repository root that points at the schema; without it only single-file symbols are available.
+    """
 
     @classmethod
     def iter_all(cls, include_experimental: bool = False, include_non_programming_languages: bool = True) -> Iterable[Self]:
@@ -314,6 +322,7 @@ class Language(str, Enum):
             self.HTML,
             self.SCSS,
             self.ANGULAR,
+            self.GRAPHQL,
         }
 
     def is_programming_language(self) -> bool:
@@ -580,6 +589,8 @@ class Language(str, Enum):
                     for postfix in ["x", ""]:
                         path_patterns.append(f".{prefix}ts{postfix}")
                 return FilenameMatcher(*path_patterns)
+            case self.GRAPHQL:
+                return FilenameMatcher(".graphql", ".gql")
             case _:
                 raise ValueError(f"Unhandled language: {self}")
 
@@ -859,6 +870,10 @@ class Language(str, Enum):
                 from solidlsp.language_servers.angular_language_server import AngularLanguageServer
 
                 return AngularLanguageServer
+            case self.GRAPHQL:
+                from solidlsp.language_servers.graphql_language_server import GraphQLLanguageServer
+
+                return GraphQLLanguageServer
             case _:
                 raise ValueError(f"Unhandled language: {self}")
 
