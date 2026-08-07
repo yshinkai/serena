@@ -19,7 +19,7 @@ import pytest
 
 from serena.util.text_utils import find_text_coordinates
 from solidlsp import SolidLanguageServer
-from solidlsp.ls_config import Language
+from solidlsp.ls_config import LanguageServerId
 from solidlsp.ls_types import SymbolKind
 from test.solidlsp.conftest import read_repo_file, request_all_symbols
 
@@ -31,13 +31,13 @@ FIELD_KINDS = {SymbolKind.Field, SymbolKind.Property}
 
 @pytest.mark.graphql
 class TestGraphqlLanguageServerBasics:
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
-    @pytest.mark.parametrize("repo_path", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("repo_path", [LanguageServerId.GRAPHQL], indirect=True)
     def test_ls_is_running(self, language_server: SolidLanguageServer, repo_path: Path) -> None:
         assert language_server.is_running()
         assert Path(language_server.language_server.repository_root_path).resolve() == repo_path.resolve()
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_schema_type_document_symbols(self, language_server: SolidLanguageServer) -> None:
         """Every top-level type/enum/input in the SDL schema must surface as a symbol."""
         all_symbols, _ = language_server.request_document_symbols("schema.graphql").get_all_symbols_and_roots()
@@ -45,7 +45,7 @@ class TestGraphqlLanguageServerBasics:
         for type_name in ("Query", "Mutation", "User", "Post", "Role", "CreateUserInput"):
             assert type_name in names, f"Expected type {type_name!r} to appear in schema symbols: {names}"
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_schema_field_document_symbols(self, language_server: SolidLanguageServer) -> None:
         """Field definitions within the schema types must surface as symbols too."""
         all_symbols, _ = language_server.request_document_symbols("schema.graphql").get_all_symbols_and_roots()
@@ -53,21 +53,21 @@ class TestGraphqlLanguageServerBasics:
         for field_name in ("email", "title", "published", "createUser"):
             assert field_name in names, f"Expected field {field_name!r} to appear in schema symbols: {names}"
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_query_operation_document_symbols(self, language_server: SolidLanguageServer) -> None:
         all_symbols, _ = language_server.request_document_symbols("operations/queries.graphql").get_all_symbols_and_roots()
         names = [s["name"] for s in all_symbols]
         for op_name in ("GetUser", "GetPosts", "SearchUsers"):
             assert op_name in names, f"Expected operation {op_name!r} to appear in query symbols: {names}"
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_mutation_operation_document_symbols(self, language_server: SolidLanguageServer) -> None:
         all_symbols, _ = language_server.request_document_symbols("operations/mutations.graphql").get_all_symbols_and_roots()
         names = [s["name"] for s in all_symbols]
         for op_name in ("CreateUser", "CreatePost"):
             assert op_name in names, f"Expected operation {op_name!r} to appear in mutation symbols: {names}"
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_symbol_kinds(self, language_server: SolidLanguageServer) -> None:
         """Type definitions must be classified as a type-like kind and their fields as fields."""
         all_symbols, _ = language_server.request_document_symbols("schema.graphql").get_all_symbols_and_roots()
@@ -79,7 +79,7 @@ class TestGraphqlLanguageServerBasics:
         assert user_kind in TYPE_KINDS, f"Expected 'User' to be a type-like kind, got {user_kind.name}"
         assert email_kind in FIELD_KINDS, f"Expected 'email' to be a field-like kind, got {email_kind.name}"
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_full_symbol_tree_includes_all_files(self, language_server: SolidLanguageServer) -> None:
         all_symbols = request_all_symbols(language_server)
         relative_paths = {s.get("location", {}).get("relativePath") for s in all_symbols}
@@ -91,7 +91,7 @@ class TestGraphqlLanguageServerBasics:
 class TestGraphqlDefinition:
     """graphql-config links operations to the schema, enabling cross-file go-to-definition."""
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_cross_file_definition_query_field(self, language_server: SolidLanguageServer) -> None:
         """`user(id: ...)` in queries.graphql must resolve into the ``Query.user`` field in schema.graphql."""
         path = "operations/queries.graphql"
@@ -105,7 +105,7 @@ class TestGraphqlDefinition:
             f"Expected 'user' definition to resolve into schema.graphql, got URIs: {target_uris}"
         )
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_cross_file_definition_nested_field(self, language_server: SolidLanguageServer) -> None:
         """A nested selection field (`email`) must resolve into its ``User.email`` schema definition."""
         path = "operations/queries.graphql"
@@ -119,7 +119,7 @@ class TestGraphqlDefinition:
             f"Expected 'email' definition to resolve into schema.graphql, got URIs: {target_uris}"
         )
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_within_file_definition_type_reference(self, language_server: SolidLanguageServer) -> None:
         """`author: User!` in schema.graphql must resolve to the ``type User`` definition (same file)."""
         path = "schema.graphql"
@@ -140,7 +140,7 @@ class TestGraphqlDefinition:
 class TestGraphqlHover:
     """graphql-language-service returns typed hover content backed by the schema."""
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_hover_on_query_field(self, language_server: SolidLanguageServer) -> None:
         path = "operations/queries.graphql"
         needle = "user(id"
@@ -153,7 +153,7 @@ class TestGraphqlHover:
         text = contents["value"] if isinstance(contents, dict) else str(contents)
         assert "Query.user" in text, f"Expected hover to describe 'Query.user', got: {text}"
 
-    @pytest.mark.parametrize("language_server", [Language.GRAPHQL], indirect=True)
+    @pytest.mark.parametrize("language_server", [LanguageServerId.GRAPHQL], indirect=True)
     def test_hover_on_scalar_field(self, language_server: SolidLanguageServer) -> None:
         path = "operations/queries.graphql"
         needle = "email"
