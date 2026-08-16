@@ -42,6 +42,12 @@ Status of the `main` branch. Changes prior to the next official version change w
     for the lifetime of the server -- not just cross-file navigation, as previously documented. Startup
     used to always wait out the full 30s readiness timeout in this case; the corresponding warning is now
     recognized so startup fails fast and logs a clear, actionable message instead
+  - Fix: GraphQL: adding, editing or removing a graphql-config file didn't invalidate Serena's on-disk
+    document symbols cache, since it is keyed only on each file's own content hash. A project that
+    enabled the `graphql` language server before a graphql-config existed would keep getting empty
+    document symbols/hover/definition results forever after the config was added, even across
+    restarts, until an affected file's content happened to change. The cache now also fingerprints
+    the resolved graphql-config file's content
   - Allow language server priorities to be configured in `serena_config.yml` (for auto-detection during 
     project creation) 
   - Add `python_basedpyright` as an alternative Python language server
