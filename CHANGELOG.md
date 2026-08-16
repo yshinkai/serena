@@ -36,6 +36,12 @@ Status of the `main` branch. Changes prior to the next official version change w
       Note that if the base path is itself ignored, ignored paths cannot be considered.
 
 * Language Servers: 
+  - Fix: GraphQL: without a graphql-config file (`.graphqlrc.yml` / `graphql.config.*`) at the workspace
+    root, `graphql-language-service-server` never leaves its "config missing" state, so every request
+    (document symbols, hover, definition, completion, workspace symbols) silently returns empty results
+    for the lifetime of the server -- not just cross-file navigation, as previously documented. Startup
+    used to always wait out the full 30s readiness timeout in this case; the corresponding warning is now
+    recognized so startup fails fast and logs a clear, actionable message instead
   - Allow language server priorities to be configured in `serena_config.yml` (for auto-detection during 
     project creation) 
   - Add `python_basedpyright` as an alternative Python language server
