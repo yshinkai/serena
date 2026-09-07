@@ -52,6 +52,7 @@ _LANGUAGE_REPO_ALIASES: dict[LanguageServerId, LanguageServerId] = {
     LanguageServerId.CPP_CCLS: LanguageServerId.CPP,
     LanguageServerId.PHP_PHPACTOR: LanguageServerId.PHP,
     LanguageServerId.PHP_PHPANTOM: LanguageServerId.PHP,
+    LanguageServerId.JULIA_FATOU: LanguageServerId.JULIA,
     LanguageServerId.PYTHON_JEDI: LanguageServerId.PYTHON,
     LanguageServerId.PYTHON_BASEDPYRIGHT: LanguageServerId.PYTHON,
     LanguageServerId.PYTHON_TY: LanguageServerId.PYTHON,
@@ -286,11 +287,13 @@ _LANGUAGE_PYTEST_MARKERS: dict[LanguageServerId, list[MarkDecorator | Mark]] = {
     LanguageServerId.CPP_CCLS: [pytest.mark.cpp],
     LanguageServerId.CUE: [pytest.mark.cue],
     LanguageServerId.CSHARP: [pytest.mark.csharp],
+    LanguageServerId.DENO: [pytest.mark.deno],
     LanguageServerId.FSHARP: [pytest.mark.fsharp],
     LanguageServerId.GO: [pytest.mark.go],
     LanguageServerId.HAXE: [pytest.mark.haxe],
     LanguageServerId.JAVA: [pytest.mark.java],
     LanguageServerId.KOTLIN: [pytest.mark.kotlin],
+    LanguageServerId.JULIA_FATOU: [pytest.mark.julia],
     LanguageServerId.LEAN4: [pytest.mark.lean4],
     LanguageServerId.LATEX: [pytest.mark.latex],
     LanguageServerId.MSL: [pytest.mark.msl],
@@ -437,6 +440,11 @@ def _determine_disabled_language_servers() -> list[LanguageServerId]:
     # catching a CI setup regression. On Windows/macOS CI (never installed) and off-CI without the binary it skips.
     if (_sh.which("qmlls6") is None and _sh.which("qmlls") is None) and not (is_ci and is_linux):
         result.append(LanguageServerId.QML)
+    # gleam is installed (see pytest.yml) on the Ubuntu other-langs CI batch. Same rationale as
+    # qmlls: a missing binary on Linux CI is NOT skipped (fails loudly on a CI setup regression);
+    # Windows/macOS CI and off-CI without the binary skip.
+    if _sh.which("gleam") is None and not (is_ci and is_linux):
+        result.append(LanguageServerId.GLEAM)
 
     # === 3. Disabled wherever the precondition is missing (including on CI) ===
     # 3a. Platform precondition: these language servers have no native Windows support.
@@ -478,12 +486,23 @@ def _determine_disabled_language_servers() -> list[LanguageServerId]:
         result.append(LanguageServerId.OCAML)
     if not _is_perl_language_server_available():  # perl ships with the OS; the LS module is the real signal
         result.append(LanguageServerId.PERL)
+    if _sh.which("deno") is None:  # deno bundles the language server (`deno lsp`); skip where the CLI is absent
+        result.append(LanguageServerId.DENO)
 
     # === 4. Enabled everywhere: every language NOT listed in this function (python, go, java, ...) ===
 
     # === 5. Disabled only on CI (works locally; too unstable/costly on the CI runners) ===
     if is_ci:
         result.append(LanguageServerId.KOTLIN)  # IntelliJ-based Kotlin LSP crashes on JVM restart under CI memory limits
+
+    # Disable Wolfram tests if WolframKernel is not available (checked with the same
+    # discovery logic used by the language server itself)
+    from solidlsp.language_servers.wolfram_language_server import _find_wolfram_kernel
+
+    try:
+        _find_wolfram_kernel()
+    except FileNotFoundError:
+        result.append(LanguageServerId.WOLFRAM)
 
     return result
 

@@ -39,8 +39,7 @@ def test_startup_does_not_wait_out_the_full_timeout() -> None:
         elapsed = time.monotonic() - started_at
         assert ls.is_running()
         assert elapsed < _FAST_FAIL_BUDGET_SECONDS, (
-            f"Startup took {elapsed:.1f}s -- expected the missing-config warning to short-circuit "
-            f"the wait well before the 30s timeout"
+            f"Startup took {elapsed:.1f}s -- expected the missing-config warning to short-circuit the wait well before the 30s timeout"
         )
         # Without a graphql-config, the server never leaves its uninitialized state, so
         # document symbols must come back empty rather than raising or hanging.
