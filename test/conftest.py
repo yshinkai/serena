@@ -1,10 +1,9 @@
+import logging as std_logging
 import os
 import platform
 import re
 import shutil as _sh
 import subprocess
-import threading
-import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -29,10 +28,6 @@ from .solidlsp.erlang import ERLANG_LS_UNAVAILABLE
 
 PYTEST_LOG_LEVEL = logging.DEBUG
 
-# Upper bound for waiting on a `Project`'s ignore-spec thread; gathering normally takes
-# milliseconds, so this only ever bounds a pathological case rather than slowing tests down.
-_IGNORE_SPEC_JOIN_TIMEOUT = 10.0
-
 logging.configure(level=PYTEST_LOG_LEVEL)
 
 log = logging.getLogger(__name__)
@@ -44,24 +39,34 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _await_project_background_threads() -> Iterator[None]:
+def _restore_root_logging() -> Iterator[None]:
     """
-    Wait for `Project`'s ignore-spec threads before the test's log capture goes away.
+    Restore the root logger's handlers around every test.
 
-    `Project.__init__` gathers the ignore spec in a daemon thread so that activation returns
-    immediately. When a test finishes before that thread emits its log records, the records reach a
-    stream pytest has already closed, and the logging machinery prints a
-    `--- Logging error --- ValueError: I/O operation on closed file.` block for each one. The tests
-    still pass -- logging swallows the exception -- but the blocks are interleaved with the progress
-    output and bury the real failures in CI logs.
-
-    Joining here runs while the capture is still alive, so the records land where they belong.
+    Serena's CLI configures process-wide logging: `serena.cli` calls `logging.configure` (which
+    drops the handlers already installed, pytest's own capture handlers included) and attaches its
+    own stderr and file handlers to the root logger. Tests that invoke those commands in-process
+    through click's runner leave that state behind, and the leaked stderr handler is bound to the
+    capture stream pytest closes once the test ends. Every later record in the session then fails
+    inside the stale handler with `ValueError: I/O operation on closed file.`: the records are lost,
+    and the logging machinery prints a `--- Logging error ---` block whenever stderr happens to be
+    live, which is why CI output carried tracebacks that no test was responsible for.
     """
+    root = std_logging.getLogger()
+    saved_handlers = list(root.handlers)
+    saved_level = root.level
     yield
-    deadline = time.monotonic() + _IGNORE_SPEC_JOIN_TIMEOUT
-    for thread in threading.enumerate():
-        if thread.name.startswith("gather-ignorespec["):
-            thread.join(timeout=max(0.0, deadline - time.monotonic()))
+    for handler in list(root.handlers):
+        if handler not in saved_handlers:
+            root.removeHandler(handler)
+            try:
+                handler.close()
+            except Exception:
+                pass
+    for handler in saved_handlers:
+        if handler not in root.handlers:
+            root.addHandler(handler)
+    root.setLevel(saved_level)
 
 
 @pytest.fixture(scope="session")
