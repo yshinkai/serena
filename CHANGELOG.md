@@ -148,6 +148,12 @@ CLI:
     for the lifetime of the server -- not just cross-file navigation, as previously documented. Startup
     used to always wait out the full 30s readiness timeout in this case; the corresponding warning is now
     recognized so startup fails fast and logs a clear, actionable message instead
+  - Fix: GraphQL: the server logs the same "graphql-config error" line when a config *is* present but
+    its schema fails to load (e.g. it uses a directive that is only declared programmatically and never
+    in SDL). Serena reported that as "found no graphql-config ... will all return empty results", which
+    was wrong on both counts: the config exists, the caches do come up and document symbols still work --
+    only the schema-backed features (hover, definition, completion, workspace symbols) are degraded.
+    The two cases are now told apart by whether the caches ever initialized, and each gets its own message
   - Fix: GraphQL: adding, editing or removing a graphql-config file didn't invalidate Serena's on-disk
     document symbols cache, since it is keyed only on each file's own content hash. A project that
     enabled the `graphql` language server before a graphql-config existed would keep getting empty
